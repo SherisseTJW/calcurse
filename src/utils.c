@@ -52,6 +52,7 @@
 #include "sha1.h"
 
 #define FS_EXT_MAXLEN 64
+#define _GNU_SOURCE
 
 enum format_specifier {
 	FS_STARTDATE,
@@ -815,31 +816,45 @@ const char *get_tempdir(void)
  * Create a new unique file, and return a newly allocated string which contains
  * the random part of the file name.
  */
-char *new_tempfile(const char *prefix)
-{
-	char *fullname;
-	int fd;
-	FILE *file;
+char *new_tempfile(const char *prefix) {
+    char *template, *fullname;
+    int fd;
+    FILE *file;
 
-	if (prefix == NULL)
-		return NULL;
+    if (prefix == NULL)
+        return NULL;
 
-	asprintf(&fullname, "%s.XXXXXX", prefix);
-	if ((fd = mkstemp(fullname)) == -1
-	    || (file = fdopen(fd, "w+")) == NULL) {
-		if (fd != -1) {
-			unlink(fullname);
-			close(fd);
-		}
-		ERROR_MSG(_("temporary file \"%s\" could not be created"),
-			  fullname);
+    asprintf(&template, "%s.XXXXXX", prefix);
 
-		mem_free(fullname);
-		return NULL;
-	}
-	fclose(file);
+    if ((fd = mkstemp(template)) == -1) {
+        fprintf(stderr, "Error: Temporary file could not be created\n");
+        free(template);
+        return NULL;
+    }
 
-	return fullname;
+    asprintf(&fullname, "%s.md", template);
+
+    if (rename(template, fullname) == -1) {
+        fprintf(stderr, "Error: Could not rename temporary file to \"%s\"\n", fullname);
+        unlink(template);
+        close(fd);
+        free(template);
+        free(fullname);
+        return NULL;
+    }
+
+    if ((file = fdopen(fd, "w+")) == NULL) {
+        fprintf(stderr, "Error: Could not open file stream for \"%s\"\n", fullname);
+        unlink(fullname);
+        close(fd);
+        free(template);
+        free(fullname);
+        return NULL;
+    }
+
+    fclose(file);  
+    free(template);  
+    return fullname;
 }
 
 static void get_ymd(int *year, int *month, int *day, time_t t)

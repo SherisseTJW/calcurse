@@ -1,0 +1,11 @@
+Before all of the below, if new system:
+1. `./autogen.sh`
+2. `autoconf`
+3. `./configure`
+
+To make changes, build and install using this:
+1. `make uninstall`
+2. `make clean`
+3. `rm -r /usr/bin/calcurse`
+4. `make install`
+
